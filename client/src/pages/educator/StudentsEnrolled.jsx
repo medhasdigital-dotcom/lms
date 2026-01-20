@@ -47,8 +47,9 @@ const StudentsEnrolled = () => {
 
   // Filter students
   const filteredStudents = enrolledStudents?.filter(item => {
+    if (!item.student) return false;
     const matchesSearch = 
-      item.student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.student.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.student.email?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCourse = filterCourse === "all" || item.courseTitle === filterCourse;
     return matchesSearch && matchesCourse;
@@ -56,7 +57,7 @@ const StudentsEnrolled = () => {
 
   // Get unique students count
   const uniqueStudentsCount = enrolledStudents 
-    ? new Set(enrolledStudents.map(item => item.student._id)).size 
+    ? new Set(enrolledStudents.filter(item => item.student).map(item => item.student._id)).size 
     : 0;
 
   // Copy to clipboard
