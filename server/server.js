@@ -8,17 +8,29 @@ import { clerkMiddleware } from "@clerk/express";
 import connectCloudinary from "./configs/cloudinary.js";
 import courseRouter from "./routes/courseRoute.js";
 import userRouter from "./routes/userRoutes.js";
+import job from "./configs/crons.js";
 
 // Initialize Express
 const app = express();
+
+//cron jobs
+if (process.env.NODE_ENV === "production") job.start();
 
 // Connect to the MongoDB database
 await connectDB();
 // Connect to Cloudinary
 await connectCloudinary();
 
+// CORS Configuration
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || ['http://localhost:5173', 'http://localhost:3000', 'http://192.168.1.40:5173'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+};
+
 // Middlewares
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(clerkMiddleware());
 
 // Routes
