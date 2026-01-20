@@ -24,6 +24,7 @@ export const updateRoleToEducator = async (req, res) => {
 // Add New Course
 export const addCourse = async (req, res) => {
   try {
+    console.log(req.body)
     const { courseData } = req.body;
     const imageFile = req.file;
     const educatorId = req.auth.userId;
@@ -50,7 +51,11 @@ export const addCourse = async (req, res) => {
         lecture.lectureDuration = Number(lecture.lectureDuration);
       });
     });
-
+// "[{"chapterId":"mkm1910z",
+// "chapterTitle":"ve expend and colapse",
+// "learningObjective":"",
+// "chapterContent":[
+// {"lectureId","lectureTitle","lectureDuration","lectureUrl","lectureContent":"ach lecture. and section ","lectureType":"article","isPreviewFree":false,"isExpanded":false},{"lectureId":"mkm19717","lectureTitle":" button in each l","lectureDuration":0,"lectureUrl":" button in e","lectureContent":"","lectureType":"video","isPreviewFree":false,"isExpanded":false}],"collapsed":false},{"chapterId":"mkm15e8u","chapterTitle":"in "Curriculum","learningObjective":"","chapterContent":[{"lectureId":"mkm1611k","lectureTitle":"lecture creation. and","lectureDuration":0,"lectureUrl":" also give expend and colapse button in each lecture. and section ","lectureContent":" also gi","lectureType":"video","isPreviewFree":false,"isExpanded":false},{"lectureId":"mkm15jro","lectureTitle":"" tab when add new lectu","lectureDuration":0,"lectureUrl":"re then it will forget in at new ","lectureContent":"","lectureType":"video","isPreviewFree":false,"isExpanded":false}],"collapsed":false}]"
     // Attach educator
     parsedCourseData.educator = educatorId;
 
@@ -58,7 +63,7 @@ export const addCourse = async (req, res) => {
     const imageUpload = await cloudinary.uploader.upload(imageFile.path);
 
     parsedCourseData.courseThumbnail = imageUpload.secure_url;
-
+    console.log(JSON.stringify(parsedCourseData, null, 2));
     // Create course
     await Course.create(parsedCourseData);
 

@@ -11,8 +11,12 @@
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.22.10",
+    "@hello-pangea/dnd": "^18.0.1",
     "axios": "^1.8.1",
+    "embla-carousel-autoplay": "^8.6.0",
+    "embla-carousel-react": "^8.6.0",
     "humanize-duration": "^3.32.1",
+    "lucide-react": "^0.562.0",
     "quill": "^2.0.3",
     "rc-progress": "^4.0.0",
     "react": "^19.0.0",
