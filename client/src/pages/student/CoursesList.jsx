@@ -13,7 +13,12 @@ const CoursesList = () => {
 
   useEffect(() => {
     if (allCourses && allCourses.length > 0) {
-      const tempCourses = allCourses.slice();
+      // Sort by newest first (using createdAt or _id as fallback)
+      const tempCourses = allCourses.slice().sort((a, b) => {
+        const dateA = new Date(a.createdAt || a._id.substring(0, 8));
+        const dateB = new Date(b.createdAt || b._id.substring(0, 8));
+        return dateB - dateA;
+      });
 
       input
         ? setFilteredCourses(

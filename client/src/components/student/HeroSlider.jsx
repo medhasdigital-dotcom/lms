@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import { Play, ChevronLeft, ChevronRight, Star, Users, Clock } from "lucide-react";
+import { AppContext } from "../../context/AppContext";
 
 // -------- helpers ----------
 function stripHtml(html) {
@@ -26,7 +27,7 @@ export default function HeroSlider() {
   const [slides, setSlides] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
-
+ const { backendUrl } = useContext(AppContext);
   const [emblaRef, emblaApi] = useEmblaCarousel(
     { loop: true },
     [Autoplay({ delay: 6000, stopOnInteraction: true })]
@@ -34,7 +35,7 @@ export default function HeroSlider() {
 
   // fetch courses
   useEffect(() => {
-    fetch("http://192.168.1.40:5000/api/course/all")
+    fetch(backendUrl+"/api/course/all")
       .then(res => res.json())
       .then(data => {
         setSlides(mapCoursesToSlides(data.courses.slice(0, 4)));

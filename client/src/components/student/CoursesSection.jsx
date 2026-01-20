@@ -6,6 +6,13 @@ import CourseCard from "./CourseCard";
 const CoursesSection = () => {
   const { allCourses } = useContext(AppContext);
 
+  // Sort by newest first
+  const sortedCourses = [...allCourses].sort((a, b) => {
+    const dateA = new Date(a.createdAt || a._id?.substring(0, 8));
+    const dateB = new Date(b.createdAt || b._id?.substring(0, 8));
+    return dateB - dateA;
+  });
+
   return (
     <div className="py-16 md:px-40 px-8">
       <h2 className="text-3xl font-medium text-gray-800">
@@ -18,7 +25,7 @@ const CoursesSection = () => {
       </p>
 
       <div className="grid grid-cols-auto px-4 md:px-0 md:my-16 my-10 gap-4">
-        {allCourses.slice(0, 4).map((course, index) => (
+        {sortedCourses.slice(0, 4).map((course, index) => (
           <CourseCard key={index} course={course} />
         ))}
       </div>
