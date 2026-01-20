@@ -13,13 +13,14 @@ export const AppContextProvider = (props) => {
   const currency = import.meta.env.VITE_CURRENCY;
   const navigate = useNavigate();
 
-  const { getToken } = useAuth();
-  const { user } = useUser();
+  const { getToken, isLoaded: isAuthLoaded } = useAuth();
+  const { user, isLoaded: isUserLoaded } = useUser();
 
   const [allCourses, setAllCourses] = useState([]);
   const [isEducator, setIsEducator] = useState(false);
   const [enrolledCourses, setEnrolledCourses] = useState([]);
   const [userData, setUserData] = useState(null);
+  const [isEducatorLoading, setIsEducatorLoading] = useState(true);
 
   // Fetch All Courses
   const fetchAllCourses = async () => {
@@ -41,6 +42,7 @@ export const AppContextProvider = (props) => {
     if (user.publicMetadata.role === "educator") {
       setIsEducator(true);
     }
+    setIsEducatorLoading(false);
 
     try {
       const token = await getToken();
@@ -125,11 +127,16 @@ export const AppContextProvider = (props) => {
   }, []);
 
   useEffect(() => {
-    if (user) {
-      fetchUserData();
-      fetchUserEnrolledCourses();
+    if (isAuthLoaded && isUserLoaded) {
+      if (user) {
+        fetchUserData();
+        fetchUserEnrolledCourses();
+      } else {
+        // No user logged in, done loading
+        setIsEducatorLoading(false);
+      }
     }
-  }, [user]);
+  }, [user, isAuthLoaded, isUserLoaded]);
 
   const value = {
     currency,
@@ -138,6 +145,7 @@ export const AppContextProvider = (props) => {
     calculateRating,
     isEducator,
     setIsEducator,
+    isEducatorLoading,
     calculateChapterTime,
     calculateCourseDuration,
     calculateNoOfLectures,

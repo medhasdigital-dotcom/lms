@@ -20,7 +20,7 @@ import Contact from "./pages/student/Contact";
 import { AppContext } from "./context/AppContext";
 
 const App = () => {
-  const { isEducator } = useContext(AppContext);
+  const { isEducator, isEducatorLoading } = useContext(AppContext);
   // educators should be allowed to navigate student pages too;
   // keep route protection but do not force-redirect on login
   // so remove automatic navigation here.
@@ -29,6 +29,19 @@ const App = () => {
   // Check if the current route is a Player route OR an Educator route
   const isPlayerRoute = location.pathname.startsWith('/player');
   const isEducatorRoute = location.pathname.startsWith('/educator');
+
+  // Show loading while checking educator status for educator routes
+  if (isEducatorRoute && isEducatorLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-gray-600 font-medium">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="text-default min-h-screen bg-white">
       <ToastContainer />
