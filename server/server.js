@@ -23,7 +23,7 @@ await connectCloudinary();
 
 // CORS Configuration
 const corsOptions = {
-  origin: process.env.FRONTEND_URLS?.split(',') || ['http://localhost:5173'],
+  origin: process.env.FRONTEND_URLS?.split(','),
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],

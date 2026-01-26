@@ -6,6 +6,7 @@ import {
   purchaseCourse,
   updateUserCourseProgress,
   userEnrolledCourses,
+  upgradeToPremium,
 } from "../controllers/userController.js";
 
 const userRouter = express.Router();
@@ -13,6 +14,7 @@ const userRouter = express.Router();
 userRouter.get("/data", getUserData);
 userRouter.get("/enrolled-courses", userEnrolledCourses);
 userRouter.post("/purchase", purchaseCourse);
+userRouter.post("/upgrade-to-premium", upgradeToPremium);
 
 userRouter.post("/update-course-progress", updateUserCourseProgress);
 userRouter.post("/get-course-progress", getUserCourseProgress);

@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { AppContext } from "../../context/AppContext";
 import Loading from "../../components/student/Loading";
 import { assets } from "../../assets/assets";
@@ -8,14 +8,16 @@ import Footer from "../../components/student/Footer";
 import YouTube from "react-youtube";
 import axios from "axios";
 import { toast } from "react-toastify";
-import { CheckCircle, Zap, ShieldCheck } from "lucide-react";
+import { CheckCircle, Zap, ShieldCheck, Crown, BookOpen, Award } from "lucide-react";
 
 const CourseDetails = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
 
   const [courseData, setCourseData] = useState(null);
   const [openSections, setOpenSections] = useState({});
   const [isAlreadyEnrolled, setIsAlreadyEnrolled] = useState(false);
+  const [hasPremiumAccess, setHasPremiumAccess] = useState(false);
   const [playerData, setPlayerData] = useState(null);
   
   const [selectedPlan, setSelectedPlan] = useState('standard');
@@ -47,8 +49,27 @@ const CourseDetails = () => {
       if (!userData) {
         return toast.warn("Login to Enroll");
       }
+      
+      // If already enrolled with standard and trying to upgrade
+      if (isAlreadyEnrolled && !hasPremiumAccess && selectedPlan === 'premium') {
+        const token = await getToken();
+        const { data } = await axios.post(
+          backendUrl + "/api/user/upgrade-to-premium",
+          { courseId: courseData._id },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        if (data.success) {
+          const { session_url } = data;
+          window.location.replace(session_url);
+        } else {
+          toast.error(data.message);
+        }
+        return;
+      }
+      
       if (isAlreadyEnrolled) {
-        return toast.warn("Already Enrolled");
+        return navigate("/my-enrollments");
       }
 
       const token = await getToken();
@@ -76,7 +97,16 @@ const CourseDetails = () => {
 
   useEffect(() => {
     if (userData && courseData) {
-      setIsAlreadyEnrolled(userData.enrolledCourses.includes(courseData._id));
+      const enrolled = userData.enrolledCourses?.includes(courseData._id);
+      const premium = userData.premiumCourses?.includes(courseData._id);
+      
+      setIsAlreadyEnrolled(enrolled);
+      setHasPremiumAccess(premium);
+      
+      // Auto-select the plan based on what user already has
+      if (enrolled) {
+        setSelectedPlan(premium ? 'premium' : 'standard');
+      }
     }
   }, [userData, courseData]);
 
@@ -85,12 +115,27 @@ const CourseDetails = () => {
   };
 
   const getPrice = () => {
+      // If premium plan is available
+      if (courseData.pricingTier === 'premium') {
+        const premiumPrice = courseData.premiumPrice || courseData.coursePrice * 1.5;
+        const premiumDiscount = courseData.premiumDiscount || 0;
+        const premiumFinalPrice = premiumPrice - (premiumPrice * premiumDiscount / 100);
+        
+        if (selectedPlan === 'premium') {
+          return premiumFinalPrice.toFixed(2);
+        }
+      }
+      
+      // Standard plan price
       const basePrice = courseData.coursePrice - (courseData.discount * courseData.coursePrice) / 100;
-      return selectedPlan === 'premium' ? (basePrice * 1.5).toFixed(2) : basePrice.toFixed(2);
+      return basePrice.toFixed(2);
   };
 
   const getOriginalPrice = () => {
-      return selectedPlan === 'premium' ? (courseData.coursePrice * 1.5).toFixed(2) : courseData.coursePrice;
+      if (courseData.pricingTier === 'premium' && selectedPlan === 'premium') {
+        return courseData.premiumPrice || (courseData.coursePrice * 1.5).toFixed(2);
+      }
+      return courseData.coursePrice;
   };
 
   return courseData ? (
@@ -173,8 +218,8 @@ const CourseDetails = () => {
           </div>
         </div>
 
-        {/* --- RIGHT COLUMN: COMPACT CARD --- */}
-        <div className="max-w-[380px] w-full z-10 shadow-custom-card rounded-t md:rounded-lg overflow-hidden bg-white">
+        {/* --- RIGHT COLUMN: PROFESSIONAL CARD --- */}
+        <div className="max-w-[400px] w-full z-10 shadow-xl rounded-xl overflow-hidden bg-white border border-gray-100 sticky top-24">
            
             {/* Video Preview */}
             {playerData ? (
@@ -183,77 +228,213 @@ const CourseDetails = () => {
                  </div>
             ) : (
                 <div className="relative group cursor-pointer" onClick={() => setPlayerData({ videoId: courseData.courseContent[0]?.chapterContent[0]?.lectureUrl.split('/').pop() })}>
-                    <img src={courseData.courseThumbnail} alt="" className="w-full object-cover"/>
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-all">
-                        <img src={assets.play_icon} alt="play" className="w-12 h-12 bg-white rounded-full p-3 shadow-lg"/>
+                    <img src={courseData.courseThumbnail} alt="" className="w-full aspect-video object-cover"/>
+                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-black/60 via-black/20 to-transparent group-hover:from-black/70 transition-all">
+                        <div className="w-16 h-16 bg-white/95 rounded-full flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform">
+                            <img src={assets.play_icon} alt="play" className="w-6 h-6 ml-1"/>
+                        </div>
+                        <p className="absolute bottom-4 left-4 text-white text-sm font-medium">Preview this course</p>
                     </div>
                 </div>
             )}
 
-            <div className="p-4">
-                {/* Selector Tabs - Compact */}
-                <div className="grid grid-cols-2 gap-1 p-1 bg-gray-100 rounded-lg mb-4">
-                    <button 
-                        onClick={() => setSelectedPlan('standard')}
-                        className={`py-1.5 rounded-md text-xs font-semibold transition-all ${selectedPlan === 'standard' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}
-                    >
-                        Standard
-                    </button>
-                    <button 
-                        onClick={() => setSelectedPlan('premium')}
-                        className={`py-1.5 rounded-md text-xs font-semibold transition-all flex items-center justify-center gap-1 ${selectedPlan === 'premium' ? 'bg-white text-amber-600 shadow-sm' : 'text-gray-500 hover:text-amber-600'}`}
-                    >
-                        Premium <Zap size={12} className="fill-current"/>
-                    </button>
-                </div>
-
-                {/* Price Area */}
-                <div className="flex items-end gap-2 mb-4">
-                    <span className="text-3xl font-bold text-gray-900">{currency}{getPrice()}</span>
-                    <div className="flex flex-col mb-1">
-                        <span className="text-xs text-gray-400 line-through decoration-gray-400">{currency}{getOriginalPrice()}</span>
-                        <span className="text-[10px] font-bold text-green-600">{courseData.discount}% OFF</span>
+            <div className="p-5">
+                
+                {/* Already Enrolled Badge */}
+                {isAlreadyEnrolled && (
+                    <div className={`mb-4 p-3 rounded-lg flex items-center gap-3 ${hasPremiumAccess ? 'bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200' : 'bg-blue-50 border border-blue-200'}`}>
+                        {hasPremiumAccess ? (
+                            <Crown className="w-5 h-5 text-amber-600" />
+                        ) : (
+                            <BookOpen className="w-5 h-5 text-blue-600" />
+                        )}
+                        <div className="flex-1">
+                            <p className={`text-sm font-semibold ${hasPremiumAccess ? 'text-amber-700' : 'text-blue-700'}`}>
+                                {hasPremiumAccess ? 'Premium Access' : 'Standard Access'}
+                            </p>
+                            <p className="text-xs text-gray-500">You're enrolled in this course</p>
+                        </div>
                     </div>
-                </div>
+                )}
+
+                {/* Upgrade to Premium Banner - Show if has standard plan and course offers premium */}
+                {isAlreadyEnrolled && !hasPremiumAccess && (courseData.pricingTier === 'premium' || courseData.premiumPrice > 0) && (
+                    <div className="mb-4 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-xl">
+                        <div className="flex items-start gap-3 mb-3">
+                            <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                <Crown className="w-5 h-5 text-white" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold text-amber-900">Upgrade to Premium</p>
+                                <p className="text-xs text-amber-700 mt-1">Unlock exclusive benefits and mentorship!</p>
+                            </div>
+                        </div>
+                        <ul className="space-y-1.5 mb-3 ml-1">
+                            {courseData.premiumFeatures && courseData.premiumFeatures.length > 0 ? (
+                                courseData.premiumFeatures.map((feature, idx) => (
+                                    <li key={idx} className="flex items-center gap-2 text-xs text-amber-800">
+                                        <CheckCircle size={12} className="text-amber-600" />
+                                        {feature}
+                                    </li>
+                                ))
+                            ) : (
+                                <>
+                                    <li className="flex items-center gap-2 text-xs text-amber-800">
+                                        <CheckCircle size={12} className="text-amber-600" />
+                                        1-on-1 Mentorship Sessions
+                                    </li>
+                                    <li className="flex items-center gap-2 text-xs text-amber-800">
+                                        <CheckCircle size={12} className="text-amber-600" />
+                                        Personal Code Reviews
+                                    </li>
+                                    <li className="flex items-center gap-2 text-xs text-amber-800">
+                                        <CheckCircle size={12} className="text-amber-600" />
+                                        Priority Support
+                                    </li>
+                                </>
+                            )}
+                        </ul>
+                        <button
+                            onClick={() => {
+                                setSelectedPlan('premium');
+                                enrollCourse();
+                            }}
+                            className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold rounded-lg shadow-lg transition-all flex items-center justify-center gap-2"
+                        >
+                            <Zap size={16} />
+                            Upgrade Now - {currency}{((courseData.premiumPrice || courseData.coursePrice * 1.5) - ((courseData.premiumPrice || courseData.coursePrice * 1.5) * (courseData.premiumDiscount || 0) / 100) - (courseData.coursePrice - (courseData.coursePrice * courseData.discount / 100))).toFixed(2)}
+                        </button>
+                    </div>
+                )}
+
+                {/* Plan Selector - Only show if not enrolled */}
+                {!isAlreadyEnrolled && courseData.pricingTier && (
+                    <div className="mb-5">
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Select Plan</p>
+                        <div className="grid grid-cols-2 gap-2">
+                            <button 
+                                onClick={() => setSelectedPlan('standard')}
+                                className={`relative p-3 rounded-xl border-2 transition-all text-left ${
+                                    selectedPlan === 'standard' 
+                                        ? 'border-blue-500 bg-blue-50 shadow-md' 
+                                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                                }`}
+                            >
+                                <div className="flex items-center gap-2 mb-1">
+                                    <BookOpen size={16} className={selectedPlan === 'standard' ? "text-blue-600" : "text-gray-400"} />
+                                    <span className={`text-sm font-bold ${selectedPlan === 'standard' ? 'text-blue-700' : 'text-gray-700'}`}>Standard</span>
+                                </div>
+                                <p className="text-[10px] text-gray-500">Full course access</p>
+                                {selectedPlan === 'standard' && (
+                                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+                                        <CheckCircle size={12} className="text-white" />
+                                    </div>
+                                )}
+                            </button>
+                            
+                            <button 
+                                onClick={() => setSelectedPlan('premium')}
+                                className={`relative p-3 rounded-xl border-2 transition-all text-left ${
+                                    selectedPlan === 'premium' 
+                                        ? 'border-amber-500 bg-gradient-to-br from-amber-50 to-orange-50 shadow-md' 
+                                        : 'border-gray-200 hover:border-amber-300 bg-white'
+                                }`}
+                            >
+                                <div className="absolute -top-2 -right-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
+                                    POPULAR
+                                </div>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <Crown size={16} className={selectedPlan === 'premium' ? "text-amber-600" : "text-gray-400"} />
+                                    <span className={`text-sm font-bold ${selectedPlan === 'premium' ? 'text-amber-700' : 'text-gray-700'}`}>Premium</span>
+                                </div>
+                                <p className="text-[10px] text-gray-500">Access + Mentorship</p>
+                                {selectedPlan === 'premium' && (
+                                    <div className="absolute -top-1 -left-1 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
+                                        <CheckCircle size={12} className="text-white" />
+                                    </div>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Price Area - Only show if not enrolled */}
+                {!isAlreadyEnrolled && (
+                    <div className="flex items-baseline gap-3 mb-5 pb-5 border-b border-gray-100">
+                        <span className="text-4xl font-extrabold text-gray-900">{currency}{getPrice()}</span>
+                        <div className="flex flex-col">
+                            <span className="text-sm text-gray-400 line-through">{currency}{getOriginalPrice()}</span>
+                            <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">{courseData.discount}% OFF</span>
+                        </div>
+                    </div>
+                )}
 
                 {/* Enrollment Button */}
                 <button 
                     onClick={enrollCourse}
-                    className={`w-full py-3 rounded-lg font-bold text-white shadow-lg transition-all transform active:scale-95 mb-4 text-sm
-                        ${selectedPlan === 'premium' 
-                            ? 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 shadow-amber-200' 
-                            : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'
+                    className={`w-full py-3.5 rounded-xl font-bold text-white shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] mb-5 flex items-center justify-center gap-2
+                        ${isAlreadyEnrolled
+                            ? hasPremiumAccess 
+                                ? 'bg-gradient-to-r from-amber-500 to-orange-600 shadow-amber-200/50' 
+                                : 'bg-blue-600 shadow-blue-200/50'
+                            : selectedPlan === 'premium' 
+                                ? 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 shadow-amber-200/50' 
+                                : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200/50'
                         }`}
                 >
-                    {isAlreadyEnrolled ? "Go to Course" : selectedPlan === 'premium' ? "Enroll Premium" : "Enroll Now"}
+                    {isAlreadyEnrolled ? (
+                        <>
+                            <BookOpen size={18} />
+                            Continue Learning
+                        </>
+                    ) : (
+                        <>
+                            {selectedPlan === 'premium' ? <Crown size={18} /> : <Zap size={18} />}
+                            {selectedPlan === 'premium' ? "Get Premium Access" : "Enroll Now"}
+                        </>
+                    )}
                 </button>
 
                 {/* Features List */}
-                <div className="space-y-2">
-                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">
-                        {selectedPlan === 'premium' ? 'Premium Features:' : 'Plan Includes:'}
+                <div className="space-y-3">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                        {isAlreadyEnrolled ? 'Your Benefits:' : selectedPlan === 'premium' ? 'Premium Includes:' : 'What\'s Included:'}
                     </p>
                     
-                    <ul className="space-y-2 text-xs text-gray-600">
-                        <li className="flex items-start gap-2">
-                            <CheckCircle size={14} className={selectedPlan === 'premium' ? "text-amber-500" : "text-green-500"}/> 
-                            <span>Full Course Access</span>
+                    <ul className="space-y-2.5">
+                        <li className="flex items-center gap-3 text-sm text-gray-700">
+                            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${(isAlreadyEnrolled ? hasPremiumAccess : selectedPlan === 'premium') ? "bg-amber-100" : "bg-green-100"}`}>
+                                <CheckCircle size={12} className={(isAlreadyEnrolled ? hasPremiumAccess : selectedPlan === 'premium') ? "text-amber-600" : "text-green-600"}/> 
+                            </div>
+                            <span>Lifetime Course Access</span>
                         </li>
-                        <li className="flex items-start gap-2">
-                            <CheckCircle size={14} className={selectedPlan === 'premium' ? "text-amber-500" : "text-green-500"}/> 
+                        <li className="flex items-center gap-3 text-sm text-gray-700">
+                            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${(isAlreadyEnrolled ? hasPremiumAccess : selectedPlan === 'premium') ? "bg-amber-100" : "bg-green-100"}`}>
+                                <Award size={12} className={(isAlreadyEnrolled ? hasPremiumAccess : selectedPlan === 'premium') ? "text-amber-600" : "text-green-600"}/> 
+                            </div>
                             <span>Certificate of Completion</span>
                         </li>
                         
                         {/* Premium Only Features */}
-                        {selectedPlan === 'premium' && (
+                        {(isAlreadyEnrolled ? hasPremiumAccess : selectedPlan === 'premium') && (
                             <>
-                                <li className="flex items-start gap-2 animate-in fade-in">
-                                    <Zap size={14} className="text-amber-500 fill-amber-100"/> 
-                                    <span className="font-semibold text-gray-800">1-on-1 Mentorship</span>
+                                <li className="flex items-center gap-3 text-sm font-medium text-gray-800">
+                                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+                                        <Zap size={10} className="text-white"/> 
+                                    </div>
+                                    <span>1-on-1 Mentorship Sessions</span>
                                 </li>
-                                <li className="flex items-start gap-2 animate-in fade-in">
-                                    <Zap size={14} className="text-amber-500 fill-amber-100"/> 
-                                    <span className="font-semibold text-gray-800">Code Review</span>
+                                <li className="flex items-center gap-3 text-sm font-medium text-gray-800">
+                                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+                                        <Zap size={10} className="text-white"/> 
+                                    </div>
+                                    <span>Personal Code Reviews</span>
+                                </li>
+                                <li className="flex items-center gap-3 text-sm font-medium text-gray-800">
+                                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+                                        <Zap size={10} className="text-white"/> 
+                                    </div>
+                                    <span>Priority Support</span>
                                 </li>
                             </>
                         )}
@@ -261,10 +442,11 @@ const CourseDetails = () => {
                 </div>
 
                 {/* Footer Guarantee */}
-                <div className="mt-4 pt-3 border-t border-gray-100 text-center">
-                    <p className="text-[10px] text-gray-400 flex items-center justify-center gap-1">
-                        <ShieldCheck size={12}/> 30-Day Money-Back Guarantee
-                    </p>
+                <div className="mt-5 pt-4 border-t border-gray-100">
+                    <div className="flex items-center justify-center gap-2 text-gray-400">
+                        <ShieldCheck size={14} className="text-green-500"/>
+                        <p className="text-xs">30-Day Money-Back Guarantee</p>
+                    </div>
                 </div>
             </div>
         </div>

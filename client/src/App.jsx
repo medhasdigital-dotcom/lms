@@ -11,6 +11,7 @@ import Dashboard from "./pages/educator/Dashboard";
 import AddCourse from "./pages/educator/AddCourse";
 import MyCourses from "./pages/educator/MyCourses";
 import StudentsEnrolled from "./pages/educator/StudentsEnrolled";
+import Drafts from "./pages/educator/Drafts";
 import Navbar from "./components/student/Navbar";
 import NotFound from "./pages/NotFound";
 import "quill/dist/quill.snow.css";
@@ -63,7 +64,9 @@ const App = () => {
         >
           <Route path="/educator" element={<Dashboard />} />
           <Route path="add-course" element={<AddCourse />} />
+          <Route path="edit-course/:courseId" element={<AddCourse />} />
           <Route path="my-courses" element={<MyCourses />} />
+          <Route path="drafts" element={<Drafts />} />
           <Route path="student-enrolled" element={<StudentsEnrolled />} />
         </Route>
         

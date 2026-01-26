@@ -64,7 +64,13 @@ export const AppContextProvider = (props) => {
 
   // Function to calculate average rating of course
   const calculateRating = (course) => {
-    if (course.courseRatings.length === 0) {
+    // Check if using new stats format
+    if (course.stats && course.stats.averageRating !== undefined) {
+      return course.stats.averageRating;
+    }
+    
+    // Fallback to old format
+    if (!course.courseRatings || course.courseRatings.length === 0) {
       return 0;
     }
     let totalRating = 0;

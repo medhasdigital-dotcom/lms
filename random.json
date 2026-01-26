@@ -1,0 +1,179 @@
+{
+  _id: ObjectId('696efbc98d1456c592e374b0'),
+  courseTitle: 'ach lecture. and section ',
+  courseDescription: '<p><strong>ach lecture. and section </strong></p>',
+  courseThumbnail: 'https://res.cloudinary.com/ddazw6p0s/image/upload/v1768881097/l8klgikohp67ca6wvneh.jpg',
+  coursePrice: 222,
+  isPublished: true,
+  discount: 10,
+  courseRatings: [],
+  createdAt: 2026-01-20T03:51:37.617Z,
+  updatedAt: 2026-01-20T03:51:37.617Z,
+  __v: 0
+}
+
+{
+  _id: 'user_38SFx4oGh9kYJ3pnFLIWKXBMSUr',
+  name: 'Anu Mau',
+  email: 'anumau011@gmail.com',
+  imageUrl: 'https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zOFNGeDhlY214M1lVMWhDQmVHcWZQY2hVcHkifQ',
+  enrolledCourses: [
+    ObjectId('605c72efb3f1c2b1f8e4e1a1'),
+    ObjectId('675ac1512100b91a6d9b8b24')
+  ],
+  createdAt: 2026-01-19T01:21:12.633Z,
+  updatedAt: 2026-01-20T04:17:40.616Z,
+  __v: 0,
+  premiumCourses: [],
+  courses: [
+    {
+      _id: ObjectId('605c72efb3f1c2b1f8e4e1a1'),
+      courseTitle: 'Introduction to JavaScript',
+      courseDescription: '<h2>Learn the Basics of JavaScript</h2><p>JavaScript is a versatile programming language that powers the web. In this course, you will learn the fundamentals of JavaScript, including syntax, data types, and control structures.</p><p>This course is perfect for beginners who want to start their journey in web development. By the end of this course, you will be able to create interactive web pages and understand the core concepts of JavaScript.</p><ul><li>Understand the basics of programming</li><li>Learn how to manipulate the DOM</li><li>Create dynamic web applications</li></ul>',
+      courseThumbnail: 'https://img.youtube.com/vi/CBWnBi-awSA/maxresdefault.jpg',
+      coursePrice: 49.99,
+      isPublished: true,
+      discount: 20,
+      courseContent: [
+        {
+          chapterId: 'chapter1',
+          chapterOrder: 1,
+          chaptertitle: 'Getting Started with JavaScript',
+          chapterContent: [
+            {
+              lectureId: 'lecture1',
+              lectureTitle: 'What is JavaScript?',
+              lectureDuration: 16,
+              lectureUrl: 'https://youtu.be/CBWnBi-awSA',
+              isPreviewFree: true,
+              lectureOrder: 1
+            },
+            {
+              lectureId: 'lecture2',
+              lectureTitle: 'Setting Up Your Environment',
+              lectureDuration: 19,
+              lectureUrl: 'https://youtu.be/4l87c2aeB4I',
+              isPreviewFree: false,
+              lectureOrder: 2
+            }
+          ]
+        },
+        {
+          chapterId: 'chapter2',
+          chapterOrder: 2,
+          chaptertitle: 'Variables and Data Types',
+          chapterContent: [
+            {
+              lectureId: 'lecture3',
+              lectureTitle: 'Understanding Variables',
+              lectureDuration: 20,
+              lectureUrl: 'https://youtu.be/pZQeBJsGoDQ',
+              isPreviewFree: true,
+              lectureOrder: 1
+            },
+            {
+              lectureId: 'lecture4',
+              lectureTitle: 'Data Types in JavaScript',
+              lectureDuration: 10,
+              lectureUrl: 'https://youtu.be/ufHT2WEkkC4',
+              isPreviewFree: false,
+              lectureOrder: 2
+            }
+          ]
+        }
+      ],
+      courseRatings: [
+        {
+          userId: 'user_2qjlgkAqIMpiR2flWIRzvWKtE0w',
+          rating: 5,
+          _id: ObjectId('6773e37360cb0ab974342314')
+        }
+      ],
+      educator: 'user_38SFx4oGh9kYJ3pnFLIWKXBMSUr',
+      enrolledStudents: [
+        'user_2qQlvXyr02B4Bq6hT0Gvaa5fT9V',
+        'user_2qQlvXyr02B4Bq6hT0Gvaa5fT9V',
+        'user_2qjlgkAqIMpiR2flWIRzvWKtE0w',
+        'user_38SFx4oGh9kYJ3pnFLIWKXBMSUr',
+        'user_38TQVV6DJ1wJ77w9Fbi63mycgDh',
+        'user_38UdTk9QtlhCtKUStnHgR4dWeqP'
+      ],
+      createdAt: 2024-12-17T08:16:53.622Z,
+      updatedAt: 2026-01-19T21:33:41.777Z,
+      __v: 0
+    },
+    {
+      _id: ObjectId('675ac1512100b91a6d9b8b24'),
+      courseTitle: 'Advanced Python Programming',
+      courseDescription: "<h2>Deep Dive into Python Programming</h2><p>This course is designed for those who have a basic understanding of Python and want to take their skills to the next level. You will explore advanced topics such as decorators, generators, and context managers.</p><p>By the end of this course, you will be able to write efficient and clean Python code, and understand how to leverage Python's powerful features for real-world applications.</p><ul><li>Master advanced data structures</li><li>Implement object-oriented programming concepts</li><li>Work with libraries and frameworks</li></ul>",
+      courseThumbnail: 'https://img.youtube.com/vi/HdLIMoQkXFA/maxresdefault.jpg',
+      coursePrice: 79.99,
+      isPublished: true,
+      discount: 15,
+      courseContent: [
+        {
+          chapterId: 'chapter1',
+          chapterOrder: 1,
+          chaptertitle: 'Advanced Data Structures',
+          chapterContent: [
+            {
+              lectureId: ' lecture1',
+              lectureTitle: 'Lists and Tuples',
+              lectureDuration: 720,
+              lectureUrl: 'https://youtu.be/HdLIMoQkXFA',
+              isPreviewFree: true,
+              lectureOrder: 1
+            },
+            {
+              lectureId: 'lecture2',
+              lectureTitle: 'Dictionaries and Sets',
+              lectureDuration: 850,
+              lectureUrl: 'https://youtu.be/HdLIMoQkXFA',
+              isPreviewFree: false,
+              lectureOrder: 2
+            }
+          ]
+        },
+        {
+          chapterId: 'chapter2',
+          chapterOrder: 2,
+          chaptertitle: 'Object-Oriented Programming',
+          chapterContent: [
+            {
+              lectureId: 'lecture3',
+              lectureTitle: 'Classes and Objects',
+              lectureDuration: 900,
+              lectureUrl: 'https://youtu.be/HdLIMoQkXFA',
+              isPreviewFree: true,
+              lectureOrder: 1
+            },
+            {
+              lectureId: 'lecture4',
+              lectureTitle: 'Inheritance and Polymorphism',
+              lectureDuration: 950,
+              lectureUrl: 'https://youtu.be/HdLIMoQkXFA',
+              isPreviewFree: false,
+              lectureOrder: 2
+            }
+          ]
+        }
+      ],
+      courseRatings: [
+        {
+          userId: 'user_2qjlgkAqIMpiR2flWIRzvWKtE0w',
+          rating: 5,
+          _id: ObjectId('6776369244daad0f313d81a9')
+        }
+      ],
+      educator: 'user_38SFx4oGh9kYJ3pnFLIWKXBMSUr',
+      enrolledStudents: [
+        'user_2qQlvXyr02B4Bq6hT0Gvaa5fT9V',
+        'user_2qjlgkAqIMpiR2flWIRzvWKtE0w',
+        'user_38SFx4oGh9kYJ3pnFLIWKXBMSUr'
+      ],
+      createdAt: 2024-12-17T08:16:53.622Z,
+      updatedAt: 2026-01-20T04:17:40.585Z,
+      __v: 0
+    }
+  ]
+}

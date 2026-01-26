@@ -3,6 +3,7 @@ import User from "../models/User.js";
 import Stripe from "stripe";
 import { Purchase } from "../models/Purchase.js";
 import Course from "../models/Course.js";
+import Enrollment from "../models/Enrollment.js";
 
 // API Controller Function to Manage Clerk User with database
 export const clerkWebhooks = async (req, res) => {
@@ -83,7 +84,7 @@ export const stripeWebhooks = async (request, response) => {
         const session = await stripeInstance.checkout.sessions.list({
           payment_intent: paymentIntentId,
         });
-        const { purchaseId } = session.data[0].metadata;
+        const { purchaseId, planType } = session.data[0].metadata;
 
         const purchaseData = await Purchase.findById(purchaseId);
         if (!purchaseData) break;
@@ -91,16 +92,73 @@ export const stripeWebhooks = async (request, response) => {
         const userData = await User.findById(purchaseData.userId);
         if (!userData) break;
 
-        // Use atomic updates to avoid re-validating the entire Course document
+        // Check if this is an upgrade (metadata has isUpgrade flag)
+        const isUpgrade = session.data[0].metadata.isUpgrade === 'true';
+
+        if (isUpgrade) {
+          // Upgrade existing enrollment to premium
+          const enrollment = await Enrollment.findOne({
+            userId: userData._id,
+            courseId: purchaseData.courseId,
+            status: "active"
+          });
+
+          if (enrollment) {
+            enrollment.planType = "premium";
+            enrollment.upgradedFrom = enrollment._id;
+            enrollment.upgradedAt = new Date();
+            enrollment.purchaseId = purchaseData._id;
+            await enrollment.save();
+          }
+        } else {
+          // Create new enrollment
+          await Enrollment.create({
+            userId: userData._id,
+            courseId: purchaseData.courseId,
+            planType: purchaseData.planType || planType || "standard",
+            purchaseId: purchaseData._id,
+            status: "active",
+            enrolledAt: new Date(),
+            expiresAt: null,
+            progress: {
+              completedLessons: [],
+              progressPercentage: 0
+            }
+          });
+        }
+
+        // Update legacy arrays for backward compatibility (temporary during migration)
         await Course.findByIdAndUpdate(purchaseData.courseId.toString(), {
           $addToSet: { enrolledStudents: userData._id },
         });
 
-        await User.findByIdAndUpdate(userData._id, {
+        // Update user's enrolled courses
+        const userUpdate = {
           $addToSet: { enrolledCourses: purchaseData.courseId },
+        };
+
+        // If premium plan, also add to premiumCourses array
+        if (planType === 'premium' || purchaseData.planType === 'premium') {
+          userUpdate.$addToSet = {
+            ...userUpdate.$addToSet,
+            premiumCourses: purchaseData.courseId,
+          };
+        }
+
+        await User.findByIdAndUpdate(userData._id, userUpdate);
+
+        // Update course stats
+        const enrollmentStats = await Enrollment.getEnrollmentStats(purchaseData.courseId);
+        await Course.findByIdAndUpdate(purchaseData.courseId, {
+          $set: {
+            "stats.totalEnrollments": enrollmentStats.total,
+            "stats.standardEnrollments": enrollmentStats.standard,
+            "stats.premiumEnrollments": enrollmentStats.premium
+          }
         });
 
         purchaseData.status = "completed";
+        purchaseData.completedAt = new Date();
         await purchaseData.save();
 
         break;

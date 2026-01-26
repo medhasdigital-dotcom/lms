@@ -66,7 +66,7 @@ const MyCourses = () => {
       (filterStatus === "public" && course.isPublished !== false) ||
       (filterStatus === "private" && course.isPublished === false);
     return matchesSearch && matchesFilter;
-  });
+  }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Sort by newest first
 
   // Calculate stats
   const totalEarnings = courses?.reduce((acc, course) => {

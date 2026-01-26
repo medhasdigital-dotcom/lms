@@ -5,6 +5,7 @@ import { AppContext } from "../../context/AppContext";
 import { toast } from "react-toastify";
 import axios from "axios";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { useParams } from "react-router-dom";
 import {
   Plus, Video, X, ChevronDown, ChevronUp,
   Edit3, Trash2, CheckCircle, Layout, FileText, PlayCircle, GripVertical,
@@ -70,6 +71,7 @@ const AddLectureBar = ({ onAdd }) => {
 
 const AddCourse = () => {
   const { backendUrl, getToken, currency } = useContext(AppContext);
+  const { courseId } = useParams();
   const quillRef = useRef(null);
   const editorRef = useRef(null);
 
@@ -82,6 +84,10 @@ const AddCourse = () => {
   const [isPublished, setIsPublished] = useState(true);
   const [chapters, setChapters] = useState([]);
   const [courseDescription, setCourseDescription] = useState(""); // Store description content
+  const [pricingTier, setPricingTier] = useState("standard"); // standard or premium
+  const [premiumPrice, setPremiumPrice] = useState(0);
+  const [premiumDiscount, setPremiumDiscount] = useState(0);
+  const [premiumFeatures, setPremiumFeatures] = useState(["Priority Support", "Lifetime Access", "Bonus Materials", "Certificate of Completion"]);
 
   // UI States
   const [isAddingSection, setIsAddingSection] = useState(false);
@@ -90,6 +96,7 @@ const AddCourse = () => {
   const [activeTab, setActiveTab] = useState("basic"); // basic, curriculum, pricing
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [isLoadingCourse, setIsLoadingCourse] = useState(false);
 
   // Calculate final price
   const finalPrice = coursePrice - (coursePrice * discount / 100);
@@ -254,7 +261,7 @@ const handleSubmit = async (e, isDraft = false) => {
     return;
   }
 
-  if (!isDraft && !image) {
+  if (!isDraft && !image && !imagePreview) {
     toast.error("Please upload a course thumbnail");
     return;
   }
@@ -282,6 +289,10 @@ const handleSubmit = async (e, isDraft = false) => {
         quillRef.current?.root.innerHTML || courseDescription,
       coursePrice: Number(coursePrice),
       discount: Number(discount),
+      pricingTier,
+      premiumPrice: Number(premiumPrice),
+      premiumDiscount: Number(premiumDiscount),
+      premiumFeatures,
       status: isDraft ? "DRAFT" : "PUBLISHED",
       courseContent: courseContentWithOrder
     };
@@ -289,15 +300,19 @@ const handleSubmit = async (e, isDraft = false) => {
     // ✅ Append as JSON string
     formData.append("courseData", JSON.stringify(courseData));
 
-    // ✅ File stays separate
+    // ✅ File stays separate (only if new image selected)
     if (image) {
       formData.append("image", image);
     }
 
     console.log("Sending:", courseData);
 
-    const { data } = await axios.post(
-      backendUrl + "/api/educator/add-course",
+    const endpoint = courseId 
+      ? `${backendUrl}/api/educator/update-course/${courseId}`
+      : `${backendUrl}/api/educator/add-course`;
+
+    const { data } = await axios[courseId ? 'put' : 'post'](
+      endpoint,
       formData,
       {
         headers: {
@@ -309,10 +324,12 @@ const handleSubmit = async (e, isDraft = false) => {
 
     if (data.success) {
       toast.success(
-        isDraft ? "Course saved as draft!" : "Course published successfully!"
+        courseId
+          ? isDraft ? "Draft updated successfully!" : "Course updated successfully!"
+          : isDraft ? "Course saved as draft!" : "Course published successfully!"
       );
 
-      if (!isDraft) {
+      if (!isDraft && !courseId) {
         setCourseTitle("");
         setCoursePrice(0);
         setDiscount(0);
@@ -368,15 +385,64 @@ const handleSubmit = async (e, isDraft = false) => {
     }
   }, [activeTab]);
 
+  // Load course data if editing
+  useEffect(() => {
+    const loadCourseData = async () => {
+      if (!courseId) return;
+      
+      setIsLoadingCourse(true);
+      try {
+        const token = await getToken();
+        const { data } = await axios.get(`${backendUrl}/api/educator/course/${courseId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (data.success && data.course) {
+          const course = data.course;
+          setCourseTitle(course.courseTitle || "");
+          setCourseDescription(course.courseDescription || "");
+          setCoursePrice(course.coursePrice || 0);
+          setDiscount(course.discount || 0);
+          setIsPublished(course.isPublished !== false);
+          setChapters(course.courseContent || []);
+          setImagePreview(course.courseThumbnail || null);
+          setPricingTier(course.pricingTier || "standard");
+          setPremiumPrice(course.premiumPrice || 0);
+          setPremiumDiscount(course.premiumDiscount || 0);
+          if (course.premiumFeatures?.length > 0) {
+            setPremiumFeatures(course.premiumFeatures);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading course:", error);
+        toast.error("Failed to load course data");
+      } finally {
+        setIsLoadingCourse(false);
+      }
+    };
+    
+    loadCourseData();
+  }, [courseId, backendUrl, getToken]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 text-gray-800 font-sans">
       <div className="max-w-6xl mx-auto px-4">
 
+        {/* Loading Overlay */}
+        {isLoadingCourse && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-6 flex flex-col items-center gap-4">
+              <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-gray-700 font-medium">Loading course data...</p>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Create New Course</h1>
-            <p className="text-gray-500 mt-1">Fill in the details to publish your course</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{courseId ? 'Edit Course' : 'Create New Course'}</h1>
+            <p className="text-gray-500 mt-1">{courseId ? 'Update your course details' : 'Fill in the details to publish your course'}</p>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -416,12 +482,12 @@ const handleSubmit = async (e, isDraft = false) => {
               {isSubmitting ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Publishing...
+                  {courseId ? 'Updating...' : 'Publishing...'}
                 </>
               ) : (
                 <>
                   <Save size={18} />
-                  Publish Course
+                  {courseId ? 'Update Course' : 'Publish Course'}
                 </>
               )}
             </button>
@@ -614,86 +680,209 @@ const handleSubmit = async (e, isDraft = false) => {
                   </div>
                 </div>
               </div>
+
+              {/* Save as Draft Button for Basic Info */}
+              <div className="flex justify-end mt-6">
+                <button
+                  type="button"
+                  onClick={handleSaveDraft}
+                  disabled={isSavingDraft || isSubmitting}
+                  className="flex items-center gap-2 px-6 py-3 bg-gray-100 hover:bg-gray-200 disabled:bg-gray-50 text-gray-700 rounded-lg font-medium transition-colors border border-gray-300"
+                >
+                  {isSavingDraft ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <FileText size={18} />
+                      Save as Draft & Continue Later
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           )}
 
           {/* Pricing Tab */}
           {activeTab === 'pricing' && (
-            <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-6">
-              <h2 className="text-lg font-semibold mb-6 text-gray-800 flex items-center gap-2">
-                <DollarSign size={20} className="text-indigo-600" />
-                Pricing & Discount
-              </h2>
+            <div className="space-y-6">
+              {/* Pricing Tier Selection */}
+              <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-6">
+                <h2 className="text-lg font-semibold mb-6 text-gray-800 flex items-center gap-2">
+                  <DollarSign size={20} className="text-indigo-600" />
+                  Pricing Tiers
+                </h2>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Price Input */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Course Price ({currency})
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <DollarSign size={18} className="text-gray-400" />
-                    </div>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={coursePrice}
-                      onChange={(e) => setCoursePrice(parseFloat(e.target.value) || 0)}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
-                      placeholder="49.99"
-                    />
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">Set to 0 for a free course</p>
-                </div>
-
-                {/* Discount Input */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Discount (%)
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <Percent size={18} className="text-gray-400" />
-                    </div>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={discount}
-                      onChange={(e) => setDiscount(Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
-                      placeholder="20"
-                    />
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">Optional promotional discount</p>
-                </div>
-              </div>
-
-              {/* Price Preview */}
-              <div className="mt-8 p-6 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-100">
-                <h3 className="text-sm font-medium text-gray-600 mb-4">Price Preview</h3>
-                <div className="flex items-end gap-4">
-                  <div>
-                    <p className="text-3xl font-bold text-gray-900">{currency}{finalPrice.toFixed(2)}</p>
-                    {discount > 0 && (
-                      <p className="text-lg text-gray-400 line-through">{currency}{coursePrice.toFixed(2)}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Standard Tier */}
+                  <div 
+                    onClick={() => setPricingTier('standard')}
+                    className={`relative cursor-pointer border-2 rounded-xl p-6 transition-all ${
+                      pricingTier === 'standard' 
+                        ? 'border-indigo-500 bg-indigo-50/50 shadow-lg' 
+                        : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
+                    }`}
+                  >
+                    {pricingTier === 'standard' && (
+                      <div className="absolute -top-3 left-4 bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-full">
+                        Selected
+                      </div>
                     )}
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
+                        <Tag className="w-6 h-6 text-gray-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900">Standard</h3>
+                        <p className="text-sm text-gray-500">Basic course access</p>
+                      </div>
+                    </div>
+                    <ul className="space-y-2 mb-6">
+                      <li className="flex items-center gap-2 text-sm text-gray-600">
+                        <CheckCircle size={16} className="text-green-500" /> Full course access
+                      </li>
+                      <li className="flex items-center gap-2 text-sm text-gray-600">
+                        <CheckCircle size={16} className="text-green-500" /> Community support
+                      </li>
+                      <li className="flex items-center gap-2 text-sm text-gray-600">
+                        <CheckCircle size={16} className="text-green-500" /> Mobile access
+                      </li>
+                    </ul>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Price ({currency})</label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <DollarSign size={16} className="text-gray-400" />
+                          </div>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={coursePrice}
+                            onChange={(e) => setCoursePrice(parseFloat(e.target.value) || 0)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none text-sm"
+                            placeholder="49.99"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Discount (%)</label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <Percent size={16} className="text-gray-400" />
+                          </div>
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={discount}
+                            onChange={(e) => setDiscount(Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none text-sm"
+                            placeholder="20"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-2xl font-bold text-gray-900">{currency}{finalPrice.toFixed(2)}</span>
+                        {discount > 0 && (
+                          <span className="text-sm text-gray-400 line-through">{currency}{coursePrice.toFixed(2)}</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  {discount > 0 && (
-                    <span className="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold mb-1">
-                      {discount}% OFF
-                    </span>
-                  )}
+
+                  {/* Premium Tier */}
+                  <div 
+                    onClick={() => setPricingTier('premium')}
+                    className={`relative cursor-pointer border-2 rounded-xl p-6 transition-all ${
+                      pricingTier === 'premium' 
+                        ? 'border-purple-500 bg-purple-50/50 shadow-lg' 
+                        : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
+                    }`}
+                  >
+                    {pricingTier === 'premium' && (
+                      <div className="absolute -top-3 left-4 bg-purple-600 text-white text-xs font-bold px-3 py-1 rounded-full">
+                        Selected
+                      </div>
+                    )}
+                    <div className="absolute -top-3 right-4 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+                      ⭐ Popular
+                    </div>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                        <Tag className="w-6 h-6 text-purple-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900">Premium</h3>
+                        <p className="text-sm text-gray-500">Enhanced experience</p>
+                      </div>
+                    </div>
+                    <ul className="space-y-2 mb-6">
+                      {premiumFeatures.map((feature, idx) => (
+                        <li key={idx} className="flex items-center gap-2 text-sm text-gray-600">
+                          <CheckCircle size={16} className="text-purple-500" /> {feature}
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Price ({currency})</label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <DollarSign size={16} className="text-gray-400" />
+                          </div>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={premiumPrice}
+                            onChange={(e) => setPremiumPrice(parseFloat(e.target.value) || 0)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all outline-none text-sm"
+                            placeholder="99.99"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Discount (%)</label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <Percent size={16} className="text-gray-400" />
+                          </div>
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={premiumDiscount}
+                            onChange={(e) => setPremiumDiscount(Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all outline-none text-sm"
+                            placeholder="20"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-2xl font-bold text-gray-900">{currency}{(premiumPrice - (premiumPrice * premiumDiscount / 100)).toFixed(2)}</span>
+                        {premiumDiscount > 0 && (
+                          <span className="text-sm text-gray-400 line-through">{currency}{premiumPrice.toFixed(2)}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-sm text-gray-500 mt-2">
-                  Students will pay {currency}{finalPrice.toFixed(2)} for this course
-                </p>
               </div>
 
               {/* Visibility Toggle */}
-              <div className="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-200">
+              <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-medium text-gray-900 flex items-center gap-2">
@@ -721,6 +910,28 @@ const handleSubmit = async (e, isDraft = false) => {
                     />
                   </button>
                 </div>
+              </div>
+
+              {/* Save as Draft Button for Pricing */}
+              <div className="flex justify-end mt-6">
+                <button
+                  type="button"
+                  onClick={handleSaveDraft}
+                  disabled={isSavingDraft || isSubmitting}
+                  className="flex items-center gap-2 px-6 py-3 bg-gray-100 hover:bg-gray-200 disabled:bg-gray-50 text-gray-700 rounded-lg font-medium transition-colors border border-gray-300"
+                >
+                  {isSavingDraft ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <FileText size={18} />
+                      Save as Draft & Continue Later
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           )}
@@ -983,6 +1194,28 @@ const handleSubmit = async (e, isDraft = false) => {
                     </div>
                   </div>
                 )}
+
+                {/* Save as Draft Button for Curriculum */}
+                <div className="flex justify-end mt-6">
+                  <button
+                    type="button"
+                    onClick={handleSaveDraft}
+                    disabled={isSavingDraft || isSubmitting}
+                    className="flex items-center gap-2 px-6 py-3 bg-gray-100 hover:bg-gray-200 disabled:bg-gray-50 text-gray-700 rounded-lg font-medium transition-colors border border-gray-300"
+                  >
+                    {isSavingDraft ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <FileText size={18} />
+                        Save as Draft & Continue Later
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           )}

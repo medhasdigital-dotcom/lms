@@ -3,6 +3,11 @@ import {
   addCourse,
   educatorDashboard,
   getEducatorCourses,
+  getCourse,
+  updateCourse,
+  getDraftCourses,
+  deleteCourse,
+  publishCourse,
   getEnrolledStudentsData,
   updateRoleToEducator,
 } from "../controllers/educatorController.js";
@@ -20,6 +25,16 @@ educatorRouter.post(
   addCourse
 );
 educatorRouter.get("/courses", protectEducator, getEducatorCourses);
+educatorRouter.get("/course/:courseId", protectEducator, getCourse);
+educatorRouter.put(
+  "/update-course/:courseId",
+  upload.single("image"),
+  protectEducator,
+  updateCourse
+);
+educatorRouter.get("/drafts", protectEducator, getDraftCourses);
+educatorRouter.delete("/course/:courseId", protectEducator, deleteCourse);
+educatorRouter.put("/course/:courseId/publish", protectEducator, publishCourse);
 educatorRouter.get("/dashboard", protectEducator, educatorDashboard);
 educatorRouter.get(
   "/enrolled-students",

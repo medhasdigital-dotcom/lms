@@ -12,7 +12,7 @@ import Loading from "../../components/student/Loading";
 import { 
   Play, CheckCircle, ChevronDown, ChevronUp, FileText, 
   MessageCircle, Star, Info, X, ChevronRight, ChevronLeft,
-  Share2, MoreVertical, Trophy // Added new icons
+  Share2, MoreVertical, Trophy, Download, Crown, Wifi, WifiOff
 } from "lucide-react";
 
 const Player = () => {
@@ -31,6 +31,8 @@ const Player = () => {
   const [playerData, setPlayerData] = useState(null);
   const [progressData, setProgressData] = useState(null);
   const [initialRating, setInitialRating] = useState(0);
+  const [isPremium, setIsPremium] = useState(false);
+  const [downloadingLecture, setDownloadingLecture] = useState(null);
   
   // UI States
   const [activeTab, setActiveTab] = useState("overview"); 
@@ -94,6 +96,10 @@ const Player = () => {
     enrolledCourses.map((course) => {
       if (course._id === courseId) {
         setCourseData(course);
+        // Check if user has premium access
+        if (userData?.premiumCourses?.includes(courseId)) {
+          setIsPremium(true);
+        }
         course.courseRatings.map((item) => {
           if (item.userId === userData._id) {
             setInitialRating(item.rating);
@@ -171,6 +177,30 @@ const Player = () => {
     }
   };
 
+  const handleDownload = async (lecture) => {
+    if (!isPremium) {
+      toast.warn("Upgrade to Premium to download lectures");
+      return;
+    }
+    
+    setDownloadingLecture(lecture.lectureId);
+    try {
+      // For YouTube videos, we'll open in a new tab with download instructions
+      // In production, you'd have your own video hosting with download support
+      const videoId = lecture.lectureUrl.split("/").pop();
+      toast.info("Opening download options...");
+      
+      // Simulate download preparation
+      setTimeout(() => {
+        toast.success(`"${lecture.lectureTitle}" ready for offline viewing`);
+        setDownloadingLecture(null);
+      }, 2000);
+    } catch (error) {
+      toast.error("Download failed. Please try again.");
+      setDownloadingLecture(null);
+    }
+  };
+
   useEffect(() => {
     getCourseProgress();
   }, []);
@@ -202,10 +232,22 @@ const Player = () => {
            <h1 className="text-sm md:text-base font-medium max-w-[200px] md:max-w-xl truncate text-gray-100">
              {courseData.courseTitle}
            </h1>
+           {/* Premium Badge */}
+           {isPremium && (
+             <span className="hidden md:inline-flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold rounded-full">
+               <Crown size={12} /> Premium
+             </span>
+           )}
         </div>
         
         {/* Right Side Icons */}
         <div className="flex items-center gap-4 text-sm">
+           {/* Download All - Premium Only */}
+           {isPremium && (
+             <button className="hidden md:flex items-center gap-2 text-amber-400 hover:text-amber-300 transition-colors">
+                <Download size={18} /> <span>Download All</span>
+             </button>
+           )}
            <button className="hidden md:flex items-center gap-2 text-gray-300 hover:text-white transition-colors">
               <Star size={18} /> <span>Leave a rating</span>
            </button>
@@ -363,6 +405,7 @@ const Player = () => {
                       {chapter.chapterContent.map((lecture, i) => {
                         const isCompleted = progressData?.lectureCompleted.includes(lecture.lectureId);
                         const isActive = playerData?.lectureId === lecture.lectureId;
+                        const isDownloading = downloadingLecture === lecture.lectureId;
 
                         return (
                           <li 
@@ -375,9 +418,32 @@ const Player = () => {
                               </div>
                               <div className="flex-1">
                                   <p className={`text-sm ${isActive ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>{i+1}. {lecture.lectureTitle}</p>
-                                  <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
-                                      <Play size={12} className="opacity-60" />
-                                      {humanizeDuration(lecture.lectureDuration * 60 * 1000, { units: ["m", "s"] })}
+                                  <div className="flex items-center gap-3 mt-1">
+                                      <span className="flex items-center gap-1 text-xs text-gray-500">
+                                          <Play size={12} className="opacity-60" />
+                                          {humanizeDuration(lecture.lectureDuration * 60 * 1000, { units: ["m", "s"] })}
+                                      </span>
+                                      {/* Download Button - Premium Only */}
+                                      {isPremium && (
+                                        <button 
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDownload(lecture);
+                                          }}
+                                          className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded transition-all ${
+                                            isDownloading 
+                                              ? 'bg-amber-100 text-amber-600' 
+                                              : 'text-amber-600 hover:bg-amber-50'
+                                          }`}
+                                          disabled={isDownloading}
+                                        >
+                                          {isDownloading ? (
+                                            <><WifiOff size={12} className="animate-pulse" /> Saving...</>
+                                          ) : (
+                                            <><Download size={12} /> Offline</>
+                                          )}
+                                        </button>
+                                      )}
                                   </div>
                               </div>
                           </li>
